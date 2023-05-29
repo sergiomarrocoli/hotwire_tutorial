@@ -1,4 +1,6 @@
 class ApplicantsController < ApplicationController
+  include Filterable
+
   before_action :set_applicant, only: %i[ show edit update destroy change_stage ] 
   before_action :authenticate_user!
   
@@ -12,11 +14,6 @@ class ApplicantsController < ApplicationController
     render operations: cable_car
       .inner_html('#slideover-content', html: html)
       .text_content('#slideover-header', text: 'Add an applicant')
-  end
-
-  # GET /applicants or /applicants.json
-  def index
-    @applicants = Applicant.all
   end
 
   # GET /applicants/1 or /applicants/1.json
@@ -65,7 +62,19 @@ class ApplicantsController < ApplicationController
     end
   end
 
+  def index
+    @grouped_applicants = filter!(Applicant)
+      .for_account(current_user.account_id)
+      .group_by(&:stage)
+  end
+  
   private
+  
+    # Be sure to place this at the bottom of the controller, with the other private methods
+    def search_params
+      params.permit(:query, :job, :sort)
+    end
+
     # Use callbacks to share common setup or constraints between actions.
     def set_applicant
       @applicant = Applicant.find(params[:id])
